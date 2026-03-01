@@ -1,0 +1,30 @@
+graph LR
+  FU["Feishu User (Phone/PC)"] --> FC["Feishu Connector (Control-Plane Host)"]
+  IU["iMessage User (iPhone/Mac)"] --> IC["iMessage Connector (Control-Plane Host)"]
+  FC --> CP["Control Plane (Control-Plane Host)"]
+  IC --> CP
+
+  CP --> AR["Agent Registry (Control-Plane Host)"]
+  CP --> TQ["Task Queue (Control-Plane Host)"]
+  CP --> NM["Notion Memory Index (Notion SaaS)"]
+  CP --> OS["OSS Object Storage (S3/R2/MinIO)"]
+
+  TQ --> M1["agent-mac-app mbp-work (MacBook)"]
+  TQ --> M2["agent-mac-app mbp-home (MacBook)"]
+  TQ --> U1["agent-ubuntu-cli ubuntu-dev-1 (Ubuntu + Docker)"]
+
+  M1 --> RE["RunEvent Stream (Control-Plane Host)"]
+  M2 --> RE
+  U1 --> RE
+  RE --> CP
+
+  CP --> NF["Notification Fanout (Control-Plane Host)"]
+  NF --> FC
+  NF --> IC
+
+  M1 --> NM
+  M2 --> NM
+  U1 --> NM
+  M1 --> OS
+  M2 --> OS
+  U1 --> OS
