@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     oss_root: str = "./data/oss"
     bootstrap_ttl_seconds: int = 3600
     token_ttl_seconds: int = 86400
+    feishu_push_url: str = ""
+    imessage_push_url: str = ""
+    connector_push_timeout_seconds: int = 10
 
 
 settings = Settings()

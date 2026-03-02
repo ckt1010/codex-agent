@@ -1,5 +1,45 @@
 # Release Notes
 
+## v0.1.1 (2026-03-02)
+
+### Summary
+新增“会话可见与会话控制”能力：飞书/iMessage 可发送 `list` 查看所有设备 session（Markdown 输出），并可用 `@session:<id>` 指定会话继续下发控制。
+
+### Added
+1. Session 查询接口
+- `GET /api/sessions/list`
+- `GET /api/sessions/markdown`
+
+2. 命令桥接能力（统一协议）
+- 新增 `connectors/command_bridge.py`
+- 支持命令：
+  - `list`
+  - `@codex @agent:<name> @proj:<alias> <task>`
+  - `@codex @agent:<name> @session:<session_id> @proj:<alias> <task>`
+
+3. Connector 扩展
+- iMessage BlueBubbles webhook 支持 `list` 与 `@session`。
+- 新增 Feishu webhook bridge，支持 `list` 与 `@session`。
+- `list` 与任务受理信息支持“主动回推”到对应通道（不只是 webhook 返回）。
+
+4. 数据模型与存储
+- `TaskEnvelope` 新增可选字段 `session_id`。
+- `tasks` 表新增 `session_id`（兼容已有库自动迁移）。
+- 新增 session 汇总查询与 Markdown 渲染。
+
+5. Agent 行为
+- 执行任务时若任务包含 `session_id`，事件上报复用该 thread/session。
+
+6. 任务结果主动通知
+- control-plane 新增通知扇出（Notification Fanout）。
+- `started|tool_error|completed` 事件会根据任务 `source`（`feishu|imessage`）主动回推到配置通道。
+
+### Test Results
+本地执行结果：
+1. `ruff check .` -> Passed
+2. `mypy src` -> Passed
+3. `pytest -q` -> Passed (`25 passed`)
+
 ## v0.1.0 (2026-03-01)
 
 ### Summary

@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   target_agent TEXT NOT NULL,
   project_alias TEXT NOT NULL,
   instruction TEXT NOT NULL,
+  session_id TEXT,
   priority INTEGER NOT NULL,
   created_at TEXT NOT NULL,
   status TEXT NOT NULL,
@@ -56,6 +57,12 @@ CREATE TABLE IF NOT EXISTS run_events (
   summary TEXT NOT NULL,
   timestamp TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_tasks_agent_status_created
+ON tasks(target_agent, status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_run_events_agent_thread_time
+ON run_events(agent_name, thread_id, timestamp);
 
 CREATE TABLE IF NOT EXISTS memory_records (
   memory_id TEXT PRIMARY KEY,

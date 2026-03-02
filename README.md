@@ -28,6 +28,13 @@
 4. `connectors`
 - Feishu connector：收发消息 + 白名单。
 - iMessage connector：通过 BlueBubbles 体系收发 + 白名单。
+- 两端统一支持：
+`list`（返回 Markdown 设备/session 列表）
+`@codex @agent:<name> @session:<session_id> @proj:<alias> <task>`（按会话继续控制）
+- 两端支持“主动回推”：
+  - `list` 查询结果会主动推送回请求通道
+  - 任务受理信息会主动推送回请求通道
+  - 任务执行里程碑（`started|tool_error|completed`）由 control-plane 主动扇出回原始通道
 
 5. `memory-sync`
 - 结构化记忆索引写入 Notion；原文与大证据片段写入 OSS；两者通过 `oss_uri` + citation 关联。
@@ -58,6 +65,12 @@
 1. 入站命令格式
 - `@codex @agent:<name> @proj:<alias> <task>`
 - 示例：`@codex @agent:ubuntu-dev-1 @proj:backend 修复支付重试`
+- 复用已有会话：`@codex @agent:<name> @session:<session_id> @proj:<alias> <task>`
+- 查看所有设备 session：发送 `list`（返回 Markdown 表格，含每个设备的 session 与最后输出）
+
+1.1 Session API
+- `GET /api/sessions/list`：返回结构化 session 列表
+- `GET /api/sessions/markdown`：返回 Markdown 设备/session 概览（适合飞书/iMessage 直接显示）
 
 2. `TaskEnvelope`
 - `task_id`
@@ -67,6 +80,7 @@
 - `target_agent`
 - `project_alias`
 - `instruction`
+- `session_id`（可选；指定后复用已有 session/thread）
 - `priority`
 - `created_at`
 
@@ -99,6 +113,18 @@
 2. Agent 首启携带 `bootstrap_code` 注册并换取专属 `agent_token` 与配置。
 3. 本地写入 `.env`（或密钥文件）后，注册码立即失效。
 4. Token 定期轮换，失联设备可吊销。
+
+### 通知回推配置（新增）
+1. control-plane 事件扇出：
+- `CODEX_BRIDGE_FEISHU_PUSH_URL`
+- `CODEX_BRIDGE_IMESSAGE_PUSH_URL`
+
+2. connector 主动回推（list/accepted）：
+- `FEISHU_OUTBOUND_PUSH_URL`
+- `IMESSAGE_OUTBOUND_PUSH_URL`
+
+说明：
+- 若未配置上述 URL，API 仍返回 webhook 响应，但不会主动回推（返回 `skipped`）。
 
 ## 共享记忆规范（Notion 索引 + OSS 内容）
 1. 共享原则
@@ -235,7 +261,7 @@ graph LR
 | `agent-mac-app` runner | `tested` | pull + heartbeat + completed 事件回传已实现（V1 mock 执行） |
 | `agent-ubuntu-cli` runner | `tested` | pull + heartbeat + mock codex 执行 + completed 回传已实现 |
 | `memory-sync`（本地抽象） | `tested` | SQLite 索引 + 本地 OSS + citation/oss_uri 门禁 + fresh 过滤 |
-| connectors（mock） | `tested` | `mock_feishu`/`mock_imessage` 入站下发可用，含 e2e 覆盖 |
+| connectors | `tested` | `Feishu bridge` + `BlueBubbles iMessage bridge` 均支持 `list` 与 `@session` 指令 |
 | `install.sh` 三角色安装 | `done` | 支持 `control-plane|agent-mac|agent-ubuntu` 与参数落盘 |
 | GitHub Actions CI | `done` | `ruff + mypy + pytest + coverage>=80%` |
 | GitHub tag release | `done` | `v*.*.*` 触发构建、校验和、自动 Release |

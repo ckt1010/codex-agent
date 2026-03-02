@@ -18,6 +18,7 @@ class TaskEnvelope(BaseModel):
     target_agent: str = Field(min_length=1)
     project_alias: str
     instruction: str
+    session_id: str | None = None
     priority: int = 0
     created_at: str
 
@@ -38,6 +39,14 @@ class RunEvent(BaseModel):
     event_type: RunEventType
     summary: str
     timestamp: str
+
+
+class SessionSummary(BaseModel):
+    agent_name: str
+    session_id: str
+    last_event_type: str
+    last_output: str
+    last_event_at: str
 
 
 class Citation(BaseModel):

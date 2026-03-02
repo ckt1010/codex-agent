@@ -5,7 +5,14 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from common.models import AgentDescriptor, Citation, MemoryRecord, RunEvent, TaskEnvelope
+from common.models import (
+    AgentDescriptor,
+    Citation,
+    MemoryRecord,
+    RunEvent,
+    SessionSummary,
+    TaskEnvelope,
+)
 
 
 class SQLiteRepo:
@@ -24,6 +31,12 @@ class SQLiteRepo:
         ddl = schema_path.read_text(encoding="utf-8")
         with self._connect() as conn:
             conn.executescript(ddl)
+            cols = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(tasks)").fetchall()
+            }
+            if "session_id" not in cols:
+                conn.execute("ALTER TABLE tasks ADD COLUMN session_id TEXT")
             conn.commit()
 
     def insert_bootstrap_code(self, code: str, expires_at: str) -> None:
@@ -100,6 +113,21 @@ class SQLiteRepo:
                 "SELECT * FROM agents WHERE agent_name = ?", (agent_name,)
             ).fetchone()
 
+    def get_task(self, task_id: str) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,)).fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def list_agents(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT agent_name, agent_type, status, queue_len, last_seen "
+                "FROM agents ORDER BY agent_name ASC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def add_task_dedup(
         self, source: str, source_message_id: str, task_id: str, created_at: str
     ) -> bool:
@@ -123,9 +151,8 @@ class SQLiteRepo:
                 """
                 INSERT INTO tasks(
                   task_id, source, source_message_id, requester_id, target_agent,
-                  project_alias, instruction, priority, created_at, status
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  project_alias, instruction, session_id, priority, created_at, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     task.task_id,
@@ -135,6 +162,7 @@ class SQLiteRepo:
                     task.target_agent,
                     task.project_alias,
                     task.instruction,
+                    task.session_id,
                     task.priority,
                     task.created_at,
                     status,
@@ -222,6 +250,38 @@ class SQLiteRepo:
                 ),
             )
             conn.commit()
+
+    def list_session_summaries(self) -> list[SessionSummary]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT r.agent_name,
+                       r.thread_id AS session_id,
+                       r.event_type AS last_event_type,
+                       r.summary AS last_output,
+                       r.timestamp AS last_event_at
+                FROM run_events r
+                JOIN (
+                    SELECT agent_name, thread_id, MAX(timestamp) AS max_ts
+                    FROM run_events
+                    GROUP BY agent_name, thread_id
+                ) latest
+                ON latest.agent_name = r.agent_name
+               AND latest.thread_id = r.thread_id
+               AND latest.max_ts = r.timestamp
+                ORDER BY r.agent_name ASC, r.timestamp DESC
+                """
+            ).fetchall()
+        return [
+            SessionSummary(
+                agent_name=row["agent_name"],
+                session_id=row["session_id"],
+                last_event_type=row["last_event_type"],
+                last_output=row["last_output"],
+                last_event_at=row["last_event_at"],
+            )
+            for row in rows
+        ]
 
     def list_fresh_memory(self, now_iso: str) -> list[MemoryRecord]:
         with self._connect() as conn:

@@ -15,10 +15,16 @@ def client(tmp_path: pytest.TempPathFactory) -> Generator[TestClient, None, None
     oss_root = tmp_path / "oss"
     old_db = settings_module.settings.db_path
     old_oss = settings_module.settings.oss_root
+    old_feishu_push_url = settings_module.settings.feishu_push_url
+    old_imessage_push_url = settings_module.settings.imessage_push_url
     settings_module.settings.db_path = str(db_path)
     settings_module.settings.oss_root = str(oss_root)
+    settings_module.settings.feishu_push_url = ""
+    settings_module.settings.imessage_push_url = ""
     app = create_app()
     with TestClient(app) as c:
         yield c
     settings_module.settings.db_path = old_db
     settings_module.settings.oss_root = old_oss
+    settings_module.settings.feishu_push_url = old_feishu_push_url
+    settings_module.settings.imessage_push_url = old_imessage_push_url

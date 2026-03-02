@@ -36,7 +36,7 @@ class MacAgentRunner:
         event = {
             "task_id": task["task_id"],
             "agent_name": self.agent_name,
-            "thread_id": f"thread-{task['task_id']}",
+            "thread_id": task.get("session_id") or f"thread-{task['task_id']}",
             "event_type": "completed",
             "summary": "mock mac execution completed",
             "timestamp": utcnow_iso(),

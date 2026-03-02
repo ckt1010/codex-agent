@@ -115,6 +115,18 @@ curl -sS -X POST http://127.0.0.1:8000/api/tasks/ingest \
 注意：
 1. 不支持 `@agent:auto`
 2. 未指定 `@agent` 或设备离线会直接失败
+3. 复用会话时可指定：`@session:<session_id>`
+
+查看 session 列表：
+```text
+list
+```
+系统会返回 Markdown 表格，按设备展示 session 与最后输出。
+
+按 session 继续控制示例：
+```text
+@codex @agent:mbp-work @session:sess-123 @proj:backend 继续处理上次失败用例
+```
 
 ## 6. 验证运行里程碑
 一次成功任务应看到：
@@ -150,7 +162,77 @@ curl -sS -X POST http://127.0.0.1:8000/api/tasks/ingest \
 - 检查索引是否 `stale/superseded`
 - 检查 `source_version` 是否变化并触发重抽取
 
-## 9. 最小验收清单
+## 9. 这台 MacBook 接 iMessage（BlueBubbles）
+目标：让 iMessage 指令直接进入本项目 `control-plane`。
+
+1. 启动 control-plane（若未启动）
+```bash
+./scripts/run_control_plane.sh
+```
+
+2. 在同一台 MacBook 启动 iMessage connector
+```bash
+CONTROL_PLANE_URL=http://127.0.0.1:8000 \
+IMESSAGE_ALLOWED_SENDERS=\"+8613800000000\" \
+./scripts/run_imessage_connector.sh
+```
+
+3. 在 BlueBubbles 服务端把 webhook 指向：
+```text
+http://<这台MacBookIP>:8090/webhooks/bluebubbles
+```
+
+4. 从 iMessage 发送命令（必须显式设备名）
+```text
+@codex @agent:mbp-work @proj:backend 修复支付重试
+```
+
+5. 预期
+- connector 返回 `accepted`
+- `control-plane` 中出现对应任务
+- 指定 agent 拉取并执行
+- 若配置 `IMESSAGE_OUTBOUND_PUSH_URL`，`list` 与任务受理会主动回推到 iMessage 通道
+
+## 10. 这台 MacBook 接飞书（Webhook）
+目标：让飞书消息和 iMessage 一样支持 `list` / `@session`。
+
+1. 启动 Feishu connector
+```bash
+CONTROL_PLANE_URL=http://127.0.0.1:8000 \
+FEISHU_ALLOWED_USERS="ou_xxx,ou_yyy" \
+./scripts/run_feishu_connector.sh
+```
+
+2. 在飞书事件订阅配置 webhook：
+```text
+http://<这台MacBookIP>:8091/webhooks/feishu
+```
+
+3. 在飞书里发送：
+```text
+list
+```
+或
+```text
+@codex @agent:mbp-work @session:sess-123 @proj:backend 继续处理
+```
+
+4. 预期
+- 返回 Markdown session 列表或任务受理信息
+- 指令写入 control-plane 并由指定 agent 执行
+- 若配置 `FEISHU_OUTBOUND_PUSH_URL`，`list` 与任务受理会主动回推到飞书通道
+
+## 11. 任务结果主动回推（control-plane 扇出）
+在 control-plane 环境增加：
+```bash
+export CODEX_BRIDGE_FEISHU_PUSH_URL=http://<host>:<port>/push/feishu
+export CODEX_BRIDGE_IMESSAGE_PUSH_URL=http://<host>:<port>/push/imessage
+```
+效果：
+1. `POST /api/events/run` 的 `started|tool_error|completed` 事件会自动回推到原任务来源通道。
+2. 回推消息为 Markdown，包含 task_id、agent、session、event_type、summary。
+
+## 12. 最小验收清单
 1. 三角色安装命令都可执行
 2. 可向指定设备成功下发任务
 3. 飞书/iMessage 至少一条通道可收发
