@@ -36,7 +36,7 @@ def test_webhook_list_returns_markdown(monkeypatch) -> None:
     assert res.status_code == 200
     assert res.json()["status"] == "listed"
     assert "# Device Sessions" in res.json()["markdown"]
-    assert pushed == [("+8613", "# Device Sessions\n")]
+    assert any(item == ("+8613", "# Device Sessions\n") for item in pushed)
 
 
 def test_webhook_task_accepted_pushes_markdown(monkeypatch) -> None:
@@ -66,4 +66,4 @@ def test_webhook_task_accepted_pushes_markdown(monkeypatch) -> None:
     assert res.status_code == 200
     assert res.json()["status"] == "accepted"
     assert "### Task Accepted" in res.json()["markdown"]
-    assert pushed and pushed[0][0] == "+8613"
+    assert any(item[0] == "+8613" and "### Task Accepted" in item[1] for item in pushed)

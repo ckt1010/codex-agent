@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     feishu_push_url: str = ""
     imessage_push_url: str = ""
     connector_push_timeout_seconds: int = 10
+    system_status_notify_enabled: bool = True
 
 
 settings = Settings()

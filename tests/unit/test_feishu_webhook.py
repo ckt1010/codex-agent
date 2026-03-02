@@ -29,4 +29,4 @@ def test_feishu_list_pushes_markdown(monkeypatch) -> None:
 
     assert res.status_code == 200
     assert res.json()["status"] == "listed"
-    assert pushed == [("ou_123", "# Device Sessions\n")]
+    assert any(item == ("ou_123", "# Device Sessions\n") for item in pushed)

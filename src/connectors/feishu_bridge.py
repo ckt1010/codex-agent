@@ -22,6 +22,17 @@ class FeishuBridge:
         )
         allowed = os.getenv("FEISHU_ALLOWED_USERS", "")
         self.allowed_users = {x.strip() for x in allowed.split(",") if x.strip()}
+        self.status_recipient = os.getenv("FEISHU_STATUS_RECIPIENT", "").strip()
+
+    def notify_status(self, status: str, detail: str) -> dict[str, Any]:
+        markdown = (
+            "### System Status\n"
+            "- component: `feishu-connector`\n"
+            f"- status: `{status}`\n"
+            f"- detail: {detail}"
+        )
+        recipient = self.status_recipient or "feishu-system"
+        return self.cmd.push_markdown(recipient, markdown)
 
     @staticmethod
     def _extract_sender(payload: dict[str, Any]) -> str:
@@ -75,6 +86,14 @@ app = FastAPI(title="Feishu Bridge", version="0.1.0")
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    bridge.notify_status("started", "feishu connector started")
+    ok, detail = bridge.cmd.check_control_plane_health()
+    if not ok:
+        bridge.notify_status("control_plane_unreachable", detail)
 
 
 @app.post("/webhooks/feishu")

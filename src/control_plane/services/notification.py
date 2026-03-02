@@ -48,6 +48,41 @@ class NotificationFanout:
             "event_type": str(event.get("event_type") or ""),
             "markdown": self._build_markdown(task, event),
         }
-        response = httpx.post(target_url, json=payload, timeout=self.timeout_seconds)
-        response.raise_for_status()
-        return {"status": "sent", "source": source, "target_url": target_url}
+        try:
+            response = httpx.post(target_url, json=payload, timeout=self.timeout_seconds)
+            response.raise_for_status()
+            return {"status": "sent", "source": source, "target_url": target_url}
+        except httpx.HTTPError as exc:
+            return {
+                "status": "failed",
+                "source": source,
+                "target_url": target_url,
+                "error": str(exc),
+            }
+
+    def notify_system_status(self, component: str, status: str, detail: str) -> dict[str, Any]:
+        markdown = (
+            "### System Status\n"
+            f"- component: `{component}`\n"
+            f"- status: `{status}`\n"
+            f"- detail: {detail}"
+        )
+        payload = {
+            "source": "system",
+            "requester_id": "system",
+            "task_id": f"system-{component}",
+            "event_type": status,
+            "markdown": markdown,
+        }
+        out: dict[str, Any] = {}
+        for source, url in self.targets.items():
+            if not url:
+                out[source] = {"status": "skipped", "reason": "push_url_not_configured"}
+                continue
+            try:
+                response = httpx.post(url, json=payload, timeout=self.timeout_seconds)
+                response.raise_for_status()
+                out[source] = {"status": "sent", "target_url": url}
+            except httpx.HTTPError as exc:
+                out[source] = {"status": "failed", "target_url": url, "error": str(exc)}
+        return out

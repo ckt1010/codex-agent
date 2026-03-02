@@ -174,6 +174,7 @@ list
 ```bash
 CONTROL_PLANE_URL=http://127.0.0.1:8000 \
 IMESSAGE_ALLOWED_SENDERS=\"+8613800000000\" \
+IMESSAGE_STATUS_RECIPIENT=\"+8613800000000\" \
 ./scripts/run_imessage_connector.sh
 ```
 
@@ -200,6 +201,7 @@ http://<这台MacBookIP>:8090/webhooks/bluebubbles
 ```bash
 CONTROL_PLANE_URL=http://127.0.0.1:8000 \
 FEISHU_ALLOWED_USERS="ou_xxx,ou_yyy" \
+FEISHU_STATUS_RECIPIENT="ou_xxx" \
 ./scripts/run_feishu_connector.sh
 ```
 
@@ -231,6 +233,8 @@ export CODEX_BRIDGE_IMESSAGE_PUSH_URL=http://<host>:<port>/push/imessage
 效果：
 1. `POST /api/events/run` 的 `started|tool_error|completed` 事件会自动回推到原任务来源通道。
 2. 回推消息为 Markdown，包含 task_id、agent、session、event_type、summary。
+3. control-plane 启动成功会自动回推一条 `System Status`。
+4. connector 启动成功会回推 `started`；若连不上 control-plane，会回推 `control_plane_unreachable`。
 
 ## 12. 最小验收清单
 1. 三角色安装命令都可执行

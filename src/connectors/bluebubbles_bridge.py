@@ -21,6 +21,17 @@ class BlueBubblesBridge:
         )
         allowed = os.getenv("IMESSAGE_ALLOWED_SENDERS", "")
         self.allowed_senders = {x.strip() for x in allowed.split(",") if x.strip()}
+        self.status_recipient = os.getenv("IMESSAGE_STATUS_RECIPIENT", "").strip()
+
+    def notify_status(self, status: str, detail: str) -> dict[str, Any]:
+        markdown = (
+            "### System Status\n"
+            "- component: `imessage-connector`\n"
+            f"- status: `{status}`\n"
+            f"- detail: {detail}"
+        )
+        recipient = self.status_recipient or "imessage-system"
+        return self.cmd.push_markdown(recipient, markdown)
 
     @staticmethod
     def _extract_sender(payload: dict[str, Any]) -> str:
@@ -59,6 +70,14 @@ app = FastAPI(title="BlueBubbles iMessage Bridge", version="0.1.0")
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    bridge.notify_status("started", "imessage connector started")
+    ok, detail = bridge.cmd.check_control_plane_health()
+    if not ok:
+        bridge.notify_status("control_plane_unreachable", detail)
 
 
 @app.post("/webhooks/bluebubbles")

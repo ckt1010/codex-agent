@@ -48,6 +48,15 @@ def create_app() -> FastAPI:
         code, expires_at = bootstrap.issue_code()
         return {"bootstrap_code": code, "expires_at": expires_at}
 
+    @app.on_event("startup")
+    def on_startup() -> None:
+        if settings.system_status_notify_enabled:
+            notifier.notify_system_status(
+                component="control-plane",
+                status="started",
+                detail="control-plane started successfully",
+            )
+
     app.include_router(tasks.router)
     app.include_router(agents.router)
     app.include_router(events.router)

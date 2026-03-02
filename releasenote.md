@@ -1,5 +1,34 @@
 # Release Notes
 
+## v0.1.2 (2026-03-02)
+
+### Summary
+新增“系统状态通知”与“主动回推”增强：系统/connector 启动成功会通知，connector 连不上 control-plane 也会通知；任务事件会由 control-plane 主动扇出回飞书/iMessage。
+
+### Added
+1. 系统状态通知
+- control-plane 启动时推送 `started` 状态通知（可配置开关）。
+- Feishu/iMessage connector 启动时推送 `started`。
+- connector 启动后健康探测 control-plane，失败时推送 `control_plane_unreachable`。
+
+2. 主动回推增强
+- `list` 和任务受理信息支持 connector 主动回推。
+- `started|tool_error|completed` 事件由 control-plane 主动扇出到原任务来源通道。
+- 失败不阻塞主流程：通知失败会记录为 `failed` 状态，不影响事件入库。
+
+3. 配置项
+- `CODEX_BRIDGE_FEISHU_PUSH_URL`
+- `CODEX_BRIDGE_IMESSAGE_PUSH_URL`
+- `CODEX_BRIDGE_SYSTEM_STATUS_NOTIFY_ENABLED`
+- `FEISHU_OUTBOUND_PUSH_URL` / `IMESSAGE_OUTBOUND_PUSH_URL`
+- `FEISHU_STATUS_RECIPIENT` / `IMESSAGE_STATUS_RECIPIENT`
+
+### Test Results
+本地执行结果：
+1. `ruff check .` -> Passed
+2. `mypy src` -> Passed
+3. `pytest -q` -> Passed (`32 passed`)
+
 ## v0.1.1 (2026-03-02)
 
 ### Summary

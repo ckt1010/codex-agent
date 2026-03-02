@@ -54,3 +54,15 @@ def test_push_markdown(monkeypatch) -> None:
             {"source": "imessage", "recipient": "+8613", "markdown": "### hello"},
         )
     ]
+
+
+def test_check_control_plane_health(monkeypatch) -> None:
+    def fake_get(url: str, timeout: int = 5):
+        _ = (url, timeout)
+        return _Resp({"status": "ok"})
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    bridge = CommandBridge("http://local", "imessage")
+    ok, detail = bridge.check_control_plane_health()
+    assert ok is True
+    assert "reachable" in detail

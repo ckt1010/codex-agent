@@ -49,6 +49,18 @@ class CommandBridge:
         response.raise_for_status()
         return str(response.json().get("markdown") or "")
 
+    def check_control_plane_health(self) -> tuple[bool, str]:
+        try:
+            response = httpx.get(f"{self.control_plane_url}/healthz", timeout=5)
+            response.raise_for_status()
+            status = str(response.json().get("status") or "")
+            if status == "ok":
+                return True, "control-plane reachable"
+            response_text = getattr(response, "text", "")
+            return False, f"unexpected healthz payload: {response_text}"
+        except httpx.HTTPError as exc:
+            return False, str(exc)
+
     def push_markdown(self, recipient: str, markdown: str) -> dict[str, Any]:
         if not self.outbound_push_url:
             return {"status": "skipped", "reason": "outbound_push_url_not_configured"}

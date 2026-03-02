@@ -123,8 +123,14 @@
 - `FEISHU_OUTBOUND_PUSH_URL`
 - `IMESSAGE_OUTBOUND_PUSH_URL`
 
+3. 启动/连通性状态通知接收目标：
+- `FEISHU_STATUS_RECIPIENT`
+- `IMESSAGE_STATUS_RECIPIENT`
+
 说明：
 - 若未配置上述 URL，API 仍返回 webhook 响应，但不会主动回推（返回 `skipped`）。
+- connector 启动时会发送 `started` 状态；若探测不到 control-plane，会额外发送 `control_plane_unreachable` 状态。
+- control-plane 启动时会向飞书与 iMessage 推送 `control-plane started` 状态（可通过 `CODEX_BRIDGE_SYSTEM_STATUS_NOTIFY_ENABLED=false` 关闭）。
 
 ## 共享记忆规范（Notion 索引 + OSS 内容）
 1. 共享原则
